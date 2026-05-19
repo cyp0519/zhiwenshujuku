@@ -1,0 +1,18 @@
+# 智问数据库 — 依赖清单
+streamlit==1.45.1
+plotly==6.0.1
+pandas==2.3.0
+fastapi==0.115.12
+uvicorn==0.34.3
+langchain==0.3.26
+langchain-community==0.3.27
+langchain-openai==0.3.27
+langgraph==0.5.1
+chromadb==1.0.20
+openai==1.82.0
+sqlparse==0.5.3
+loguru==0.7.3
+python-dotenv==1.1.0
+openpyxl==3.1.5
+httpx==0.28.1
+slowapi==0.1.9

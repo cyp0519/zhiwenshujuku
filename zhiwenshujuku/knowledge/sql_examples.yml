@@ -1,0 +1,133 @@
+# ============================================
+# 智问数据库 — SQL 样例库 (扩充版)
+# ============================================
+
+# === 基础查询 ===
+total_movies:
+  question: "共有多少部电影？"
+  sql: 'SELECT COUNT(*) AS 电影总数 FROM movies'
+
+movies_by_year:
+  question: "每年上映的电影数量"
+  sql: 'SELECT year AS 上映年份, COUNT(*) AS 电影数量 FROM movies GROUP BY year ORDER BY year DESC'
+
+top_rated:
+  question: "评分最高的10部电影"
+  sql: 'SELECT title AS 电影名, rating AS 评分, year AS 年份 FROM movies ORDER BY rating DESC LIMIT 10'
+
+movies_by_genre:
+  question: "各类别电影的数量统计"
+  sql: 'SELECT genre AS 类型, COUNT(*) AS 数量 FROM movies GROUP BY genre ORDER BY 数量 DESC'
+
+director_movies:
+  question: "某位导演的电影作品"
+  sql: 'SELECT title AS 电影名, year AS 年份, rating AS 评分 FROM movies WHERE director LIKE "%宫崎骏%" ORDER BY year DESC'
+
+high_rated_after_year:
+  question: "2000年后评分超过9分的电影"
+  sql: 'SELECT title AS 电影名, year AS 年份, rating AS 评分 FROM movies WHERE year >= 2000 AND rating >= 9.0 ORDER BY rating DESC'
+
+actor_movies:
+  question: "某位演员参演的电影"
+  sql: 'SELECT title AS 电影名, year AS 年份, rating AS 评分 FROM movies WHERE actors LIKE "%张国荣%" ORDER BY rating DESC'
+
+country_stats:
+  question: "各国电影的平均评分"
+  sql: 'SELECT country AS 国家, COUNT(*) AS 电影数量, ROUND(AVG(rating), 2) AS 平均评分 FROM movies GROUP BY country ORDER BY 平均评分 DESC'
+
+longest_movies:
+  question: "时长最长的10部电影"
+  sql: 'SELECT title AS 电影名, duration AS 时长分钟, year AS 年份 FROM movies ORDER BY duration DESC LIMIT 10'
+
+recent_high_rated:
+  question: "2020年之后上映的高分电影"
+  sql: 'SELECT title AS 电影名, year AS 年份, rating AS 评分, genre AS 类型 FROM movies WHERE year >= 2020 AND rating >= 8.5 ORDER BY rating DESC'
+
+top_directors:
+  question: "平均评分最高的导演"
+  sql: 'SELECT director AS 导演, COUNT(*) AS 作品数, ROUND(AVG(rating), 2) AS 平均评分 FROM movies GROUP BY director HAVING COUNT(*) >= 3 ORDER BY 平均评分 DESC'
+
+user_ratings_stats:
+  question: "用户评分分布统计"
+  sql: 'SELECT ROUND(rating) AS 评分段, COUNT(*) AS 人数 FROM reviews GROUP BY 评分段 ORDER BY 评分段'
+
+genre_year_trend:
+  question: "近10年各类型电影数量变化"
+  sql: 'SELECT year AS 年份, genre AS 类型, COUNT(*) AS 数量 FROM movies WHERE year >= 2016 GROUP BY year, genre ORDER BY year DESC'
+
+top_rated_per_year:
+  question: "每年评分最高的电影"
+  sql: 'SELECT year AS 年份, title AS 电影名, MAX(rating) AS 最高评分 FROM movies GROUP BY year HAVING year > 0 ORDER BY year DESC'
+
+# === 扩充样例 ===
+movies_by_country:
+  question: "各国电影数量排名"
+  sql: 'SELECT country AS 国家, COUNT(*) AS 电影数量 FROM movies GROUP BY country ORDER BY 电影数量 DESC'
+
+chinese_high_rated:
+  question: "评分最高的中国电影"
+  sql: 'SELECT title AS 电影名, rating AS 评分, year AS 年份, director AS 导演 FROM movies WHERE country = "中国" ORDER BY rating DESC LIMIT 10'
+
+animated_movies:
+  question: "动画电影有哪些"
+  sql: 'SELECT title AS 电影名, year AS 年份, rating AS 评分, country AS 国家 FROM movies WHERE genre LIKE "%动画%" ORDER BY rating DESC'
+
+recent_movies_2024:
+  question: "2024年上映的电影"
+  sql: 'SELECT title AS 电影名, rating AS 评分, genre AS 类型, director AS 导演 FROM movies WHERE year = 2024 ORDER BY rating DESC'
+
+movies_with_reviews:
+  question: "有评论的电影及其平均用户评分"
+  sql: 'SELECT m.title AS 电影名, COUNT(r.id) AS 评论数, ROUND(AVG(r.rating), 2) AS 平均用户评分 FROM movies m JOIN reviews r ON m.id = r.movie_id GROUP BY m.id ORDER BY 平均用户评分 DESC LIMIT 10'
+
+active_users:
+  question: "评论最多的用户"
+  sql: 'SELECT u.username AS 用户名, u.city AS 城市, COUNT(r.id) AS 评论数 FROM users u JOIN reviews r ON u.id = r.user_id GROUP BY u.id ORDER BY 评论数 DESC LIMIT 10'
+
+city_user_count:
+  question: "各城市的用户数量"
+  sql: 'SELECT city AS 城市, COUNT(*) AS 用户数 FROM users GROUP BY city ORDER BY 用户数 DESC'
+
+age_distribution:
+  question: "用户年龄分布"
+  sql: 'SELECT CASE WHEN age < 20 THEN "20岁以下" WHEN age BETWEEN 20 AND 29 THEN "20-29岁" WHEN age BETWEEN 30 AND 39 THEN "30-39岁" WHEN age BETWEEN 40 AND 49 THEN "40-49岁" ELSE "50岁以上" END AS 年龄段, COUNT(*) AS 人数 FROM users GROUP BY 年龄段 ORDER BY 年龄段'
+
+genre_rating_comparison:
+  question: "各类型电影的平均评分对比"
+  sql: 'SELECT genre AS 类型, COUNT(*) AS 数量, ROUND(AVG(rating), 2) AS 平均评分, ROUND(AVG(duration), 0) AS 平均时长 FROM movies GROUP BY genre ORDER BY 平均评分 DESC'
+
+decade_analysis:
+  question: "各年代电影数量和平均评分"
+  sql: 'SELECT (year / 10) * 10 AS 年代, COUNT(*) AS 电影数量, ROUND(AVG(rating), 2) AS 平均评分 FROM movies WHERE year > 0 GROUP BY 年代 ORDER BY 年代'
+
+review_text_search:
+  question: "包含好评的评论"
+  sql: 'SELECT m.title AS 电影名, u.username AS 用户, r.rating AS 评分, r.review_text AS 评论内容 FROM reviews r JOIN movies m ON r.movie_id = m.id JOIN users u ON r.user_id = u.id WHERE r.review_text LIKE "%推荐%" OR r.review_text LIKE "%好看%" LIMIT 10'
+
+director_genre_diversity:
+  question: "涉猎类型最多的导演"
+  sql: 'SELECT director AS 导演, COUNT(DISTINCT genre) AS 类型数, COUNT(*) AS 作品数 FROM movies GROUP BY director HAVING 类型数 >= 2 ORDER BY 类型数 DESC'
+
+movie_rating_count:
+  question: "评分人数最多的电影"
+  sql: 'SELECT title AS 电影名, rating_count AS 评分人数, rating AS 评分 FROM movies ORDER BY rating_count DESC LIMIT 10'
+
+recent_reviews:
+  question: "最近的电影评论"
+  sql: 'SELECT m.title AS 电影名, u.username AS 用户, r.rating AS 评分, r.review_text AS 评论, r.review_date AS 日期 FROM reviews r JOIN movies m ON r.movie_id = m.id JOIN users u ON r.user_id = u.id ORDER BY r.review_date DESC LIMIT 10'
+
+low_rated_movies:
+  question: "评分最低的电影"
+  sql: 'SELECT title AS 电影名, rating AS 评分, year AS 年份, director AS 导演 FROM movies WHERE rating > 0 ORDER BY rating ASC LIMIT 10'
+
+movies_per_director:
+  question: "作品数量最多的导演"
+  sql: 'SELECT director AS 导演, COUNT(*) AS 作品数 FROM movies GROUP BY director ORDER BY 作品数 DESC LIMIT 10'
+
+gender_rating_diff:
+  question: "男女用户的平均评分差异"
+  sql: 'SELECT u.gender AS 性别, COUNT(r.id) AS 评论数, ROUND(AVG(r.rating), 2) AS 平均评分 FROM users u JOIN reviews r ON u.id = r.user_id GROUP BY u.gender'
+
+multi_genre_movies:
+  question: "包含多种类型的电影"
+  sql: 'SELECT title AS 电影名, genre AS 类型, rating AS 评分 FROM movies WHERE genre LIKE "%,%" ORDER BY rating DESC LIMIT 10'
