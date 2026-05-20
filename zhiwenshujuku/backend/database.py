@@ -132,25 +132,48 @@ class DatabaseManager:
         
         return "\n".join(parts)
     
-    def get_history(self, session_id: str | None = None, limit: int = 50) -> list[dict]:
-        """获取查询历史"""
+    def get_history(self, session_id: str | None = None, limit: int = 200,
+                    date_from: str | None = None, date_to: str | None = None) -> list[dict]:
+        """获取查询历史，支持日期范围筛选"""
         conn = self.get_connection()
         cursor = conn.cursor()
-        
+
+        conditions = []
+        params = []
+
         if session_id:
-            cursor.execute(
-                "SELECT * FROM query_history WHERE session_id=? ORDER BY created_at DESC LIMIT ?",
-                (session_id, limit)
-            )
-        else:
-            cursor.execute(
-                "SELECT * FROM query_history ORDER BY created_at DESC LIMIT ?",
-                (limit,)
-            )
-        
+            conditions.append("session_id = ?")
+            params.append(session_id)
+        if date_from:
+            conditions.append("DATE(created_at) >= ?")
+            params.append(date_from)
+        if date_to:
+            conditions.append("DATE(created_at) <= ?")
+            params.append(date_to)
+
+        where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+        sql = f"SELECT * FROM query_history {where_clause} ORDER BY created_at DESC LIMIT ?"
+        params.append(limit)
+
+        cursor.execute(sql, tuple(params))
         rows = [dict(row) for row in cursor.fetchall()]
         conn.close()
         return rows
+
+    def batch_delete_history(self, ids: list[int]) -> int:
+        """批量删除查询历史，返回删除行数"""
+        if not ids:
+            return 0
+        conn = self.get_connection()
+        placeholders = ",".join(["?"] * len(ids))
+        cursor = conn.execute(
+            f"DELETE FROM query_history WHERE id IN ({placeholders})",
+            tuple(ids)
+        )
+        conn.commit()
+        deleted = cursor.rowcount
+        conn.close()
+        return deleted
     
     def save_history(self, session_id: str, question: str, sql_generated: str,
                      sql_executed: str, status: str, summary: str):

@@ -330,9 +330,10 @@ async def get_schema_context():
 
 
 @app.get("/history")
-async def get_history(session_id: str | None = None, limit: int = 50):
-    """获取查询历史"""
-    return app_state.db.get_history(session_id, limit)
+async def get_history(session_id: str | None = None, limit: int = 200,
+                      date_from: str | None = None, date_to: str | None = None):
+    """获取查询历史，支持日期范围筛选"""
+    return app_state.db.get_history(session_id, limit, date_from, date_to)
 
 
 @app.delete("/history/{history_id}")
@@ -352,6 +353,16 @@ async def delete_history(history_id: int):
     except Exception as e:
         logger.error(f"删除历史记录失败: {e}")
         raise HTTPException(status_code=500, detail="删除失败")
+
+
+@app.post("/history/batch-delete")
+async def batch_delete_history(data: dict):
+    """批量删除查询历史"""
+    ids = data.get("ids", [])
+    if not ids:
+        raise HTTPException(status_code=400, detail="ids 不能为空")
+    deleted = app_state.db.batch_delete_history(ids)
+    return {"success": True, "deleted": deleted}
 
 
 @app.post("/history/{history_id}/favorite")
@@ -421,15 +432,26 @@ async def export_excel(data: dict):
 async def get_insights():
     """获取数据库基本统计信息（用于前端展示）"""
     db = app_state.db
-    result = {
-        "total_movies": db.execute_query("SELECT COUNT(*) as cnt FROM movies").get("data", [{}])[0].get("cnt", 0),
-        "total_users": db.execute_query("SELECT COUNT(*) as cnt FROM users").get("data", [{}])[0].get("cnt", 0),
-        "total_reviews": db.execute_query("SELECT COUNT(*) as cnt FROM reviews").get("data", [{}])[0].get("cnt", 0),
-        "total_directors": db.execute_query("SELECT COUNT(DISTINCT director) as cnt FROM movies").get("data", [{}])[0].get("cnt", 0),
-        "avg_rating": db.execute_query("SELECT ROUND(AVG(rating),2) as avg FROM movies").get("data", [{}])[0].get("avg", 0),
-        "year_range": db.execute_query("SELECT MIN(year) as min, MAX(year) as max FROM movies").get("data", [{}])[0],
+    conn = db.get_connection()
+    cursor = conn.cursor()
+
+    total_movies = cursor.execute("SELECT COUNT(*) as cnt FROM movies").fetchone()["cnt"]
+    total_users = cursor.execute("SELECT COUNT(*) as cnt FROM users").fetchone()["cnt"]
+    total_reviews = cursor.execute("SELECT COUNT(*) as cnt FROM reviews").fetchone()["cnt"]
+    total_directors = cursor.execute("SELECT COUNT(DISTINCT director) as cnt FROM movies").fetchone()["cnt"]
+    avg_rating = cursor.execute("SELECT ROUND(AVG(rating),2) as avg FROM movies").fetchone()["avg"]
+    year_range = dict(cursor.execute("SELECT MIN(year) as min, MAX(year) as max FROM movies").fetchone())
+
+    conn.close()
+
+    return {
+        "total_movies": total_movies,
+        "total_users": total_users,
+        "total_reviews": total_reviews,
+        "total_directors": total_directors,
+        "avg_rating": avg_rating,
+        "year_range": year_range,
     }
-    return result
 
 
 @app.get("/stats/queries")
@@ -508,6 +530,17 @@ async def get_schema_relations():
         ],
     }
     return relations
+
+
+@app.get("/data-dictionary")
+async def get_data_dictionary():
+    """获取数据字典（字段中文说明）"""
+    from backend.config import DATA_DICTIONARY_PATH
+    try:
+        with open(DATA_DICTIONARY_PATH, encoding="utf-8") as f:
+            return yaml.safe_load(f)
+    except FileNotFoundError:
+        return {}
 
 
 if __name__ == "__main__":

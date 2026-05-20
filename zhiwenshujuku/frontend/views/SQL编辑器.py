@@ -96,7 +96,7 @@ def page():
             "SELECT genre, COUNT(*) as count FROM movies GROUP BY genre ORDER BY count DESC",
             "SELECT director, COUNT(*) as cnt, ROUND(AVG(rating),2) as avg_rating FROM movies GROUP BY director HAVING cnt >= 3 ORDER BY avg_rating DESC",
         ]
-        selected = st.selectbox("", ["快速示例..."] + sample_queries, label_visibility="collapsed")
+        selected = st.selectbox("快速示例", ["快速示例..."] + sample_queries, label_visibility="collapsed")
         if selected != "快速示例...":
             st.session_state.sql_editor_content = selected
             st.rerun()

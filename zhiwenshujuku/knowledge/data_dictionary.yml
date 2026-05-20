@@ -1,0 +1,127 @@
+movies:
+  name: 电影信息表
+  description: 存储电影基本信息，包含标题、年份、导演、评分等核心字段
+  columns:
+    - field: id
+      type: INTEGER
+      key: PK
+      description: 电影唯一编号
+    - field: title
+      type: TEXT
+      description: 电影中文标题
+    - field: original_title
+      type: TEXT
+      description: 电影原始语言标题
+    - field: year
+      type: INTEGER
+      description: 上映年份，部分早期电影为 0
+    - field: director
+      type: TEXT
+      description: 导演姓名
+    - field: actors
+      type: TEXT
+      description: 主要演员，逗号分隔
+    - field: genre
+      type: TEXT
+      description: 电影类型/风格，逗号分隔多个标签
+    - field: country
+      type: TEXT
+      description: 制片国家/地区
+    - field: language
+      type: TEXT
+      description: 影片主要语言
+    - field: duration
+      type: INTEGER
+      description: 影片时长（分钟），0 表示未知
+    - field: rating
+      type: REAL
+      description: 评分（0-10），0 表示暂无评分
+    - field: rating_count
+      type: INTEGER
+      description: 评分人数
+    - field: description
+      type: TEXT
+      description: 电影简介/剧情梗概
+
+users:
+  name: 用户信息表
+  description: 存储平台注册用户的基本信息
+  columns:
+    - field: id
+      type: INTEGER
+      key: PK
+      description: 用户唯一编号
+    - field: username
+      type: TEXT
+      description: 用户昵称
+    - field: city
+      type: TEXT
+      description: 用户所在城市
+    - field: age
+      type: INTEGER
+      description: 用户年龄
+    - field: gender
+      type: TEXT
+      description: 用户性别
+    - field: registration_date
+      type: TEXT
+      description: 注册日期 (YYYY-MM-DD)
+
+reviews:
+  name: 电影评论表
+  description: 存储用户对电影的评分和评论内容
+  columns:
+    - field: id
+      type: INTEGER
+      key: PK
+      description: 评论唯一编号
+    - field: movie_id
+      type: INTEGER
+      key: FK
+      description: 关联的电影编号 → movies.id
+    - field: user_id
+      type: INTEGER
+      key: FK
+      description: 关联的用户编号 → users.id
+    - field: rating
+      type: REAL
+      description: 用户评分（0-10）
+    - field: review_text
+      type: TEXT
+      description: 评论文本内容
+    - field: review_date
+      type: TEXT
+      description: 评论日期 (YYYY-MM-DD)
+
+query_history:
+  name: 查询历史表
+  description: 记录用户通过自然语言或 SQL 编辑器发起的查询
+  columns:
+    - field: id
+      type: INTEGER
+      key: PK
+      description: 记录唯一编号
+    - field: session_id
+      type: TEXT
+      description: 会话编号，关联一次对话
+    - field: question
+      type: TEXT
+      description: 用户提问的自然语言或 "[直接SQL]"
+    - field: sql_generated
+      type: TEXT
+      description: 系统生成的 SQL 语句
+    - field: sql_executed
+      type: TEXT
+      description: 实际执行的 SQL 语句
+    - field: execution_status
+      type: TEXT
+      description: 执行状态：success / failure
+    - field: result_summary
+      type: TEXT
+      description: 结果摘要
+    - field: is_favorite
+      type: INTEGER
+      description: 是否收藏：0 否 / 1 是
+    - field: created_at
+      type: TEXT
+      description: 记录创建时间

@@ -13,6 +13,16 @@ API_BASE = os.getenv("ZHIWEN_API_URL", "http://localhost:8765")
 CLIENT_KWARGS = {"trust_env": False}
 
 
+@st.cache_data(ttl=60)
+def _cached_get(path: str, timeout: float = 10) -> dict | None:
+    """带缓存的 GET 请求（仅用于不变数据）"""
+    try:
+        r = httpx.get(f"{API_BASE}{path}", timeout=timeout, **CLIENT_KWARGS)
+        return r.json() if r.status_code == 200 else None
+    except Exception:
+        return None
+
+
 def api_get(path: str, timeout: float = 10) -> dict | None:
     """GET 请求"""
     try:
@@ -57,9 +67,19 @@ def get_schema() -> dict | None:
     return api_get("/schema")
 
 
-def get_history(session_id: str | None = None) -> list:
-    """获取查询历史"""
-    result = api_get(f"/history?session_id={session_id}" if session_id else "/history")
+def get_history(session_id: str | None = None, limit: int = 200,
+                date_from: str | None = None, date_to: str | None = None) -> list:
+    """获取查询历史，支持日期范围筛选"""
+    params = []
+    if session_id:
+        params.append(f"session_id={session_id}")
+    if date_from:
+        params.append(f"date_from={date_from}")
+    if date_to:
+        params.append(f"date_to={date_to}")
+    params.append(f"limit={limit}")
+    query = "&".join(params)
+    result = api_get(f"/history?{query}")
     return result if isinstance(result, list) else []
 
 
@@ -73,6 +93,21 @@ def toggle_favorite(history_id: int) -> dict | None:
     return api_post(f"/history/{history_id}/favorite", {})
 
 
+def batch_delete_history(ids: list[int]) -> dict | None:
+    """批量删除历史记录"""
+    return api_post("/history/batch-delete", {"ids": ids})
+
+
 def get_insights() -> dict | None:
-    """获取数据库统计信息"""
-    return api_get("/insights")
+    """获取数据库统计信息（缓存 60s）"""
+    return _cached_get("/insights")
+
+
+def get_health() -> dict | None:
+    """获取健康检查状态（缓存 30s）"""
+    return _cached_get("/health")
+
+
+def get_data_dictionary() -> dict | None:
+    """获取数据字典（缓存 5 分钟）"""
+    return _cached_get("/data-dictionary")

@@ -3,13 +3,13 @@
 """
 
 import streamlit as st
-from frontend.styles import GLOBAL_CSS
-from frontend.utils import get_insights, api_get
-from frontend.pages.对话查询 import page as chat_page
-from frontend.pages.SQL编辑器 import page as sql_page
-from frontend.pages.数据可视化 import page as viz_page
-from frontend.pages.查询历史 import page as history_page
-from frontend.pages.系统概览 import page as overview_page
+from frontend.styles import GLOBAL_CSS, metric_cards_html
+from frontend.utils import get_insights, get_health
+from frontend.views.对话查询 import page as chat_page
+from frontend.views.SQL编辑器 import page as sql_page
+from frontend.views.数据可视化 import page as viz_page
+from frontend.views.查询历史 import page as history_page
+from frontend.views.系统概览 import page as overview_page
 
 # ========== 页面配置 ==========
 st.set_page_config(
@@ -60,24 +60,29 @@ with st.sidebar:
             st.rerun()
 
     st.markdown(
-        "<hr style='border-color: rgba(255,255,255,0.1);'>",
+        "<hr style='border-color: rgba(30,58,95,0.12);'>",
         unsafe_allow_html=True,
     )
 
-    # 数据库状态
-    health = api_get("/health")
+    # 数据库状态（带缓存）
+    health = get_health()
     db_status = "🟢 已连接" if health and health.get("database") == "connected" else "🔴 未连接"
     st.markdown(f"**数据库状态**: {db_status}")
 
-    # 统计概览
+    # 统计概览（带缓存，使用统一卡片样式）
     insights = get_insights()
     if insights:
         st.markdown("**数据概览**")
-        cols = st.columns(2)
-        cols[0].metric("🎬 电影", insights.get("total_movies", 0))
-        cols[1].metric("⭐ 均分", insights.get("avg_rating", 0))
-        cols[0].metric("👥 用户", insights.get("total_users", 0))
-        cols[1].metric("📝 评论", insights.get("total_reviews", 0))
+        row1 = [
+            ("🎬 电影总数", str(insights.get("total_movies", 0)), "#1E3A5F"),
+            ("⭐ 平均评分", str(insights.get("avg_rating", 0)), "#E65100"),
+        ]
+        row2 = [
+            ("👥 用户数", str(insights.get("total_users", 0)), "#2E7D32"),
+            ("📝 评论数", str(insights.get("total_reviews", 0)), "#6A1B9A"),
+        ]
+        st.markdown(metric_cards_html(row1), unsafe_allow_html=True)
+        st.markdown(metric_cards_html(row2), unsafe_allow_html=True)
 
     st.markdown(
         """

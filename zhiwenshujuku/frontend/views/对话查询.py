@@ -43,6 +43,7 @@ def page():
             with cols[i % 3]:
                 if st.button(f"{ex}", key=f"ex_{i}", width="stretch"):
                     st.session_state.chat_messages.append(("user", ex))
+                    st.session_state._pending_input = ex
                     st.rerun()
 
     # ========== 对话容器 ==========
@@ -95,11 +96,14 @@ def page():
             st.rerun()
 
     # ========== 处理输入 ==========
-    if user_input:
-        st.session_state.chat_messages.append(("user", user_input))
+    pending = st.session_state.pop("_pending_input", None)
+    if user_input or pending:
+        prompt = user_input or pending
+        if user_input:
+            st.session_state.chat_messages.append(("user", user_input))
 
         with st.spinner("🤔 思考中..."):
-            result = chat(user_input, st.session_state.chat_session_id)
+            result = chat(prompt, st.session_state.chat_session_id)
 
         if result:
             msg = result.get("message", "")
