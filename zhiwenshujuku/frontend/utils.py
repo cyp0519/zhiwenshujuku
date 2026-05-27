@@ -57,13 +57,14 @@ def chat(message: str, session_id: str | None = None) -> dict | None:
     return api_post("/chat", {"message": message, "session_id": session_id})
 
 
-def execute_sql(sql: str) -> dict | None:
+def execute_sql(sql: str, save_history: bool = True) -> dict | None:
     """执行 SQL 查询"""
-    return api_post("/sql/execute", {"sql": sql})
+    return api_post("/sql/execute", {"sql": sql, "save_history": save_history})
 
 
+@st.cache_data(ttl=600)
 def get_schema() -> dict | None:
-    """获取表结构"""
+    """获取表结构（缓存 10 分钟）"""
     return api_get("/schema")
 
 
@@ -111,3 +112,28 @@ def get_health() -> dict | None:
 def get_data_dictionary() -> dict | None:
     """获取数据字典（缓存 5 分钟）"""
     return _cached_get("/data-dictionary")
+
+
+def explain_sql(sql: str) -> dict | None:
+    """获取 SQL 执行计划"""
+    return api_post("/sql/explain", {"sql": sql})
+
+
+def tune_sql(sql: str, query_plan: str) -> dict | None:
+    """获取 AI SQL 性能调优建议"""
+    return api_post("/sql/tune", {"sql": sql, "query_plan": query_plan})
+
+
+def list_indexes() -> dict | None:
+    """获取数据库索引列表"""
+    return api_get("/index/list")
+
+
+def create_index(table: str, column: str, index_name: str) -> dict | None:
+    """一键创建索引"""
+    return api_post("/index/create", {"table": table, "column": column, "index_name": index_name})
+
+
+def drop_index(index_name: str) -> dict | None:
+    """删除指定的索引"""
+    return api_post("/index/drop", {"index_name": index_name})

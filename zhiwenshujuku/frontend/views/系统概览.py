@@ -9,13 +9,14 @@ import plotly.graph_objects as go
 from frontend.utils import api_get, get_insights, get_data_dictionary
 from frontend.styles import page_header
 
-FONT_FAMILY = "Noto Sans SC"
+FONT_FAMILY = "Noto Serif SC"
+FONT_BODY = "Noto Sans SC, sans-serif"
 
 TABLE_COLORS = {
-    "movies": "#4A90D9",
-    "users": "#4CAF50",
-    "reviews": "#FF6B35",
-    "query_history": "#9C27B0",
+    "movies": "#C17B2A",
+    "users": "#5A8C5A",
+    "reviews": "#6B8EAF",
+    "query_history": "#9B7BAF",
 }
 
 TABLE_LABELS = {
@@ -87,14 +88,15 @@ def _render_query_stats():
         df = pd.DataFrame(daily)
         fig = px.bar(df, x="date", y="count",
                      labels={"date": "日期", "count": "查询次数"},
-                     color_discrete_sequence=["#4A90D9"])
+                     color_discrete_sequence=["#6B8EAF"])
         fig.update_layout(
             template="plotly_white", height=260,
             margin=dict(l=10, r=10, t=10, b=10),
-            font=dict(family=FONT_FAMILY, size=12, color="#333"),
+            font=dict(family=FONT_BODY, size=12, color="#6B5E4E"),
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         )
-        fig.update_xaxes(tickfont=dict(family=FONT_FAMILY), gridcolor="#f5f5f5")
-        fig.update_yaxes(tickfont=dict(family=FONT_FAMILY), gridcolor="#f5f5f5")
+        fig.update_xaxes(tickfont=dict(family=FONT_BODY), gridcolor="#E4DDD4", linecolor="#E4DDD4")
+        fig.update_yaxes(tickfont=dict(family=FONT_BODY), gridcolor="#E4DDD4", linecolor="#E4DDD4")
         st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
 
     recent = stats.get("recent_queries", [])
@@ -236,7 +238,7 @@ def _render_visual_er(tables: dict, foreign_keys: list):
             x=cx, y=cy + half_h - HEADER_H / 2,
             text=f"<b>{label}</b>",
             showarrow=False,
-            font=dict(family=FONT_FAMILY, size=11, color="white"),
+            font=dict(family=FONT_BODY, size=11, color="white"),
             align="center",
         )
 
@@ -251,7 +253,7 @@ def _render_visual_er(tables: dict, foreign_keys: list):
                     type="line",
                     x0=cx - half_w + 0.12, y0=row_cy + ROW_H / 2,
                     x1=cx + half_w - 0.12, y1=row_cy + ROW_H / 2,
-                    line=dict(color="#E8ECF0", width=0.5),
+                    line=dict(color="#E4DDD4", width=0.5),
                     layer="below",
                 )
 
@@ -327,25 +329,25 @@ def _render_visual_er(tables: dict, foreign_keys: list):
             x=label_x, y=label_y,
             text=f"<b>{cardinality}</b>  {label}",
             showarrow=False,
-            font=dict(family=FONT_FAMILY, size=10, color="#555"),
-            bgcolor="rgba(255,255,255,0.9)",
+            font=dict(family=FONT_BODY, size=10, color="#6B5E4E"),
+            bgcolor="rgba(247,244,240,0.95)",
             borderpad=4,
-            bordercolor="#E0E0E0",
+            bordercolor="#E4DDD4",
         )
 
     # ---------- 图例 ----------
     legend_x = 9.8
     legend_start_y = 4.2
     legend_items = [
-        ("🔑  主键 Primary Key", "#1565C0"),
-        ("🔗  外键 Foreign Key", "#E65100"),
-        ("●  一对多关系", "#888"),
+        ("🔑  主键 Primary Key", "#C17B2A"),
+        ("🔗  外键 Foreign Key", "#6B8EAF"),
+        ("●  一对多关系", "#6B5E4E"),
     ]
     fig.add_annotation(
         x=legend_x, y=legend_start_y + 0.2,
         text="<b>图例</b>",
         showarrow=False,
-        font=dict(family=FONT_FAMILY, size=12, color="#333"),
+        font=dict(family=FONT_FAMILY, size=12, color="#2C2417"),
         xanchor="right",
     )
     for i, (text, color) in enumerate(legend_items):
@@ -353,7 +355,7 @@ def _render_visual_er(tables: dict, foreign_keys: list):
             x=legend_x, y=legend_start_y - 0.2 - i * 0.28,
             text=text,
             showarrow=False,
-            font=dict(family=FONT_FAMILY, size=10.5, color=color),
+            font=dict(family=FONT_BODY, size=10.5, color=color),
             xanchor="right",
         )
 
@@ -364,7 +366,7 @@ def _render_visual_er(tables: dict, foreign_keys: list):
         margin=dict(l=10, r=10, t=10, b=10),
         xaxis=dict(range=[0, 11], showgrid=False, zeroline=False, showticklabels=False, fixedrange=True),
         yaxis=dict(range=[0, 5.5], showgrid=False, zeroline=False, showticklabels=False, fixedrange=True),
-        font=dict(family=FONT_FAMILY),
+        font=dict(family=FONT_BODY),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         dragmode=False,
@@ -410,3 +412,63 @@ def _render_data_dictionary():
                     "约束": key_tag,
                 })
             st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
+
+
+def _render_index_management():
+    """渲染索引管理面板"""
+    st.markdown("### ⚡ 数据库索引管理")
+    st.markdown("数据库索引可以显著提升 `SELECT` 查询的执行速度，但会占用一定的存储空间并在插入/更新时带来额外的写入开销。在此面板中，您可以查看当前数据库中存在的所有索引，并对自定义创建的优化索引进行清理。")
+    
+    from frontend.utils import list_indexes, drop_index
+    
+    with st.spinner("加载索引列表..."):
+        res = list_indexes()
+        
+    if res and res.get("success"):
+        indexes = res.get("indexes", [])
+        if not indexes:
+            st.info("当前数据库中没有索引记录。")
+            return
+            
+        idx_data = {
+            "索引名称": [],
+            "绑定表名": [],
+            "创建 SQL / 约束": [],
+            "索引类型": []
+        }
+        
+        custom_indexes = []
+        for idx in indexes:
+            idx_data["索引名称"].append(idx["index_name"])
+            idx_data["绑定表名"].append(idx["table_name"])
+            idx_data["创建 SQL / 约束"].append(idx["sql"])
+            
+            if idx["is_custom"]:
+                idx_data["索引类型"].append("🛠️ 用户自定义优化")
+                custom_indexes.append(idx)
+            else:
+                idx_data["索引类型"].append("🔑 系统自动创建 (PK/UNIQUE)")
+                
+        df = pd.DataFrame(idx_data)
+        st.dataframe(df, width="stretch", hide_index=True)
+        
+        if custom_indexes:
+            st.markdown("### 🗑️ 清理自定义优化索引")
+            st.write("您可以选择以下自定义索引进行删除以恢复数据库初始状态：")
+            
+            idx_options = [c["index_name"] for c in custom_indexes]
+            selected_idx = st.selectbox("选择要删除的索引", idx_options)
+            
+            if st.button("🗑️ 删除选定索引", type="secondary", width='stretch'):
+                with st.spinner(f"删除索引 `{selected_idx}`..."):
+                    drop_res = drop_index(selected_idx)
+                if drop_res and drop_res.get("success"):
+                    st.success(f"索引 `{selected_idx}` 已删除。")
+                    st.rerun()
+                else:
+                    st.error("删除索引失败。")
+        else:
+            st.markdown("ℹ️ **提示**：当前没有自定义优化索引，所有存在的索引均为系统主键或约束自动生成，不可手动删除。")
+            
+    else:
+        st.warning("无法连接后端获取索引列表，请检查后端服务。")

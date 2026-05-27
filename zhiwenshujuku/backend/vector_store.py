@@ -4,6 +4,8 @@
 
 from pathlib import Path
 from loguru import logger
+import os
+os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 import chromadb
 from chromadb.config import Settings
 

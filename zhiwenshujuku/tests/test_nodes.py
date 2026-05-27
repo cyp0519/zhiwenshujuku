@@ -139,6 +139,7 @@ class TestUtilityFunctions:
             HumanMessage(content="你好"),
             AIMessage(content="你好！"),
             HumanMessage(content="有多少电影？"),
+            AIMessage(content="有130部电影。"),
         ]
         history = get_chat_history(messages)
         assert "你好" in history

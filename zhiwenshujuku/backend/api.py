@@ -46,6 +46,7 @@ class ChatResponse(BaseModel):
 class SQLExecuteRequest(BaseModel):
     sql: str
     session_id: str | None = None
+    save_history: bool = True
 
 class SQLExecuteResponse(BaseModel):
     success: bool
@@ -54,6 +55,23 @@ class SQLExecuteResponse(BaseModel):
     row_count: int
     error: str | None = None
     elapsed: float
+
+# ========== Pydantic 性能优化模型 ==========
+
+class SQLExplainRequest(BaseModel):
+    sql: str
+
+class SQLTuneRequest(BaseModel):
+    sql: str
+    query_plan: str
+
+class IndexCreateRequest(BaseModel):
+    table: str
+    column: str
+    index_name: str
+
+class IndexDropRequest(BaseModel):
+    index_name: str
 
 
 # ========== 速率限制 ==========
@@ -240,7 +258,7 @@ async def chat(req: ChatRequest, request: Request):
         if sql_exec_result and sql_exec_result.get("success"):
             app_state.db.save_history(
                 session_id=session_id,
-                question=req.message,
+                question=state_values.get("user_query") or req.message,
                 sql_generated=state_values.get("sql_query", ""),
                 sql_executed=sql_exec_result.get("query", ""),
                 status="success",
@@ -293,14 +311,15 @@ async def execute_sql(req: SQLExecuteRequest, request: Request):
         result = app_state.db.execute_query(req.sql)
         
         # 保存历史
-        app_state.db.save_history(
-            session_id=req.session_id or "direct",
-            question="[直接SQL]",
-            sql_generated="",
-            sql_executed=req.sql,
-            status="success" if result["success"] else "failure",
-            summary=f"{result['row_count']} rows / {result.get('elapsed', 0)}ms"
-        )
+        if req.save_history:
+            app_state.db.save_history(
+                session_id=req.session_id or "direct",
+                question="[直接SQL]",
+                sql_generated="",
+                sql_executed=req.sql,
+                status="success" if result["success"] else "failure",
+                summary=f"{result['row_count']} rows / {result.get('elapsed', 0)}ms"
+            )
         
         return SQLExecuteResponse(
             success=result["success"],
@@ -315,6 +334,112 @@ async def execute_sql(req: SQLExecuteRequest, request: Request):
     except Exception as e:
         logger.error(f"SQL 执行端点错误: {e}")
         raise HTTPException(status_code=500, detail="SQL 执行失败，请检查语句后重试")
+
+
+# ========== 性能调优 API 端点 ==========
+
+@app.post("/sql/explain")
+@limiter.limit("30/minute")
+async def explain_sql(req: SQLExplainRequest, request: Request):
+    """分析 SQL 执行计划"""
+    try:
+        if not req.sql.strip():
+            raise HTTPException(status_code=400, detail="SQL 不能为空")
+        
+        sql_upper = req.sql.strip().upper()
+        if not sql_upper.startswith("SELECT"):
+            raise HTTPException(status_code=400, detail="只允许分析 SELECT 查询的执行计划")
+
+        result = app_state.db.explain_query(req.sql)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"SQL 执行计划分析端点错误: {e}")
+        raise HTTPException(status_code=500, detail="分析执行计划失败")
+
+
+@app.post("/sql/tune")
+@limiter.limit("20/minute")
+async def tune_sql(req: SQLTuneRequest, request: Request):
+    """调用 LLM 自动调优 Agent 推荐索引"""
+    try:
+        from backend.nodes import _get_llm, load_prompt
+        import json
+        
+        schema_context = app_state.db.format_schema_context()
+        prompt = load_prompt("sql_tuner")
+        llm = _get_llm(json_mode=True)
+        
+        response = llm.invoke(
+            prompt["system_prompt"].format(schema_context=schema_context)
+            + "\n\n"
+            + prompt["user_prompt"].format(
+                sql_query=req.sql,
+                query_plan=req.query_plan
+            )
+        )
+        
+        try:
+            tuning_result = json.loads(response.content)
+        except Exception:
+            match = re.search(r"\{.*\}", response.content, re.DOTALL)
+            if match:
+                tuning_result = json.loads(match.group())
+            else:
+                tuning_result = {
+                    "has_bottleneck": False,
+                    "diagnostic_summary": "无法解析 AI 调优建议。",
+                    "recommended_index": None
+                }
+        
+        return tuning_result
+    except Exception as e:
+        logger.error(f"SQL 调优端点错误: {e}")
+        raise HTTPException(status_code=500, detail="获取 AI 调优建议失败")
+
+
+@app.get("/index/list")
+async def list_indexes():
+    """获取数据库中的索引列表"""
+    try:
+        indexes = app_state.db.get_indexes()
+        return {"success": True, "indexes": indexes}
+    except Exception as e:
+        logger.error(f"获取索引列表失败: {e}")
+        raise HTTPException(status_code=500, detail="获取索引列表失败")
+
+
+@app.post("/index/create")
+@limiter.limit("20/minute")
+async def create_index(req: IndexCreateRequest, request: Request):
+    """一键创建索引"""
+    try:
+        result = app_state.db.create_index(req.table, req.column, req.index_name)
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result["error"])
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"创建索引端点错误: {e}")
+        raise HTTPException(status_code=500, detail="创建索引失败")
+
+
+@app.post("/index/drop")
+@limiter.limit("20/minute")
+async def drop_index(req: IndexDropRequest, request: Request):
+    """删除指定的索引"""
+    try:
+        result = app_state.db.drop_index(req.index_name)
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result["error"])
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"删除索引端点错误: {e}")
+        raise HTTPException(status_code=500, detail="删除索引失败")
 
 
 @app.get("/schema")

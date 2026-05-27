@@ -5,7 +5,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from frontend.utils import execute_sql, get_schema
+from frontend.utils import execute_sql, get_schema, explain_sql
 from frontend.styles import page_header
 
 
@@ -19,6 +19,18 @@ def page():
         st.session_state.sql_error = None
     if "sql_columns" not in st.session_state:
         st.session_state.sql_columns = None
+    if "sql_elapsed" not in st.session_state:
+        st.session_state.sql_elapsed = 0.0
+    if "tuning_ai_advice" not in st.session_state:
+        st.session_state.tuning_ai_advice = None
+    if "last_tuned_sql" not in st.session_state:
+        st.session_state.last_tuned_sql = ""
+    if "before_execution_time" not in st.session_state:
+        st.session_state.before_execution_time = None
+    if "after_execution_time" not in st.session_state:
+        st.session_state.after_execution_time = None
+    if "created_index_info" not in st.session_state:
+        st.session_state.created_index_info = None
 
     # ========== 页面标题 ==========
     st.markdown(
@@ -65,13 +77,24 @@ def page():
     with col1:
         if st.button("▶️ 执行", type="primary", width="stretch"):
             st.session_state.sql_editor_content = sql_query
-            with st.spinner("🔄 执行中..."):
+            # 如果 SQL 改变，重置调优状态
+            if st.session_state.last_tuned_sql != sql_query:
+                st.session_state.tuning_ai_advice = None
+                st.session_state.before_execution_time = None
+                st.session_state.after_execution_time = None
+                st.session_state.created_index_info = None
+                st.session_state.last_tuned_sql = sql_query
+
+            with st.spinner("执行中..."):
                 result = execute_sql(sql_query)
             if result:
-                if result.get("success") and result.get("data"):
-                    st.session_state.sql_results = result["data"]
-                    st.session_state.sql_columns = result["columns"]
+                if result.get("success"):
+                    st.session_state.sql_results = result.get("data", [])
+                    st.session_state.sql_columns = result.get("columns", [])
+                    st.session_state.sql_elapsed = result.get("elapsed", 0.0)
                     st.session_state.sql_error = None
+                    if st.session_state.before_execution_time is None:
+                        st.session_state.before_execution_time = result.get("elapsed", 0.0)
                 else:
                     st.session_state.sql_results = None
                     st.session_state.sql_columns = None
@@ -87,6 +110,10 @@ def page():
             st.session_state.sql_editor_content = ""
             st.session_state.sql_results = None
             st.session_state.sql_error = None
+            st.session_state.tuning_ai_advice = None
+            st.session_state.before_execution_time = None
+            st.session_state.after_execution_time = None
+            st.session_state.created_index_info = None
             st.rerun()
 
     with col3:
@@ -95,10 +122,17 @@ def page():
             "SELECT title, year, rating FROM movies ORDER BY rating DESC LIMIT 10",
             "SELECT genre, COUNT(*) as count FROM movies GROUP BY genre ORDER BY count DESC",
             "SELECT director, COUNT(*) as cnt, ROUND(AVG(rating),2) as avg_rating FROM movies GROUP BY director HAVING cnt >= 3 ORDER BY avg_rating DESC",
+            # 添加一条多表连接的重查询用于演练
+            "SELECT u.username, r.rating, m.title FROM reviews r JOIN users u ON r.user_id = u.id JOIN movies m ON r.movie_id = m.id WHERE r.rating > 4.5 AND u.age < 25"
         ]
         selected = st.selectbox("快速示例", ["快速示例..."] + sample_queries, label_visibility="collapsed")
         if selected != "快速示例...":
             st.session_state.sql_editor_content = selected
+            st.session_state.tuning_ai_advice = None
+            st.session_state.before_execution_time = None
+            st.session_state.after_execution_time = None
+            st.session_state.created_index_info = None
+            st.session_state.last_tuned_sql = selected
             st.rerun()
 
     # ========== 结果显示 ==========
@@ -112,6 +146,7 @@ def page():
             col1, col2, col3 = st.columns(3)
             col1.metric("📊 行数", len(df))
             col2.metric("📋 列数", len(df.columns))
+            col3.metric("⏱️ 查询耗时", f"{st.session_state.sql_elapsed:.2f} ms")
 
             st.markdown("### 📋 查询结果")
             st.dataframe(df, width="stretch", hide_index=True)
@@ -136,6 +171,32 @@ def page():
                     width="stretch",
                 )
 
+            # ========== 性能调优诊断面板 ==========
+            st.markdown("### ⚡ 智能性能调优与诊断")
+            
+            with st.spinner("获取数据库执行计划..."):
+                explain_result = explain_sql(st.session_state.sql_editor_content)
+            
+            if explain_result and explain_result.get("success"):
+                has_table_scan = explain_result.get("has_table_scan", False)
+                scan_tables = explain_result.get("scan_tables", [])
+                raw_plan = explain_result.get("raw_plan", [])
+                
+                # 显示基本诊断
+                if has_table_scan:
+                    st.warning(f"⚠️ **性能警告**：检测到全表扫描 (Full Table Scan) 瓶颈！影响的表：`{', '.join(scan_tables)}`。")
+                else:
+                    st.success("✅ **性能优异**：当前查询走索引或表数据极小，未检测到全表扫描瓶颈。")
+                
+                # 展示详细执行计划（折叠）
+                with st.expander("📄 查看 SQLite 原始执行计划 (Explain Query Plan)", expanded=False):
+                    plan_df = pd.DataFrame(raw_plan)
+                    if not plan_df.empty:
+                        cols_to_show = [c for c in ["id", "parent", "detail"] if c in plan_df.columns]
+                        st.dataframe(plan_df[cols_to_show], width="stretch", hide_index=True)
+            else:
+                st.info("无法分析该语句的执行计划。性能诊断仅支持 SELECT 语句。")
+
             # 快速可视化
             st.markdown("### 📈 快速可视化")
             numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
@@ -153,9 +214,9 @@ def page():
 def _make_chart(df: pd.DataFrame, chart_type: str, x_col: str, y_col: str):
     """根据类型创建 Plotly 图表"""
     color_map = {
-        "柱状图": "#1E3A5F",
-        "折线图": "#FF6B35",
-        "散点图": "#2E7D32",
+        "柱状图": "#C17B2A",
+        "折线图": "#6B8EAF",
+        "散点图": "#5A8C5A",
     }
     if chart_type == "柱状图":
         fig = px.bar(df, x=x_col, y=y_col, title=f"{y_col} 按 {x_col} 分布",
@@ -174,7 +235,11 @@ def _make_chart(df: pd.DataFrame, chart_type: str, x_col: str, y_col: str):
 
     fig.update_layout(
         template="plotly_white",
-        font=dict(family="Noto Sans SC"),
+        font=dict(family="Noto Sans SC, sans-serif", color="#6B5E4E"),
         margin=dict(l=20, r=20, t=40, b=20),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
     )
+    fig.update_xaxes(gridcolor="#E4DDD4", linecolor="#E4DDD4")
+    fig.update_yaxes(gridcolor="#E4DDD4", linecolor="#E4DDD4")
     return fig

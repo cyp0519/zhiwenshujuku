@@ -21,7 +21,7 @@ def page():
     # ========== 筛选行 ==========
     f1, f2, f3, f4 = st.columns(4)
     with f1:
-        search = st.text_input("🔍 搜索", placeholder="问题或 SQL 关键词...", label_visibility="collapsed")
+        search = st.text_input("搜索", placeholder="问题或 SQL 关键词...", label_visibility="collapsed")
     with f2:
         status_filter = st.selectbox("状态", ["全部", "success", "failure"], label_visibility="collapsed")
     with f3:
@@ -35,7 +35,7 @@ def page():
     history = get_history(limit=500, date_from=df_str, date_to=dt_str)
 
     if not history:
-        st.info("📭 暂无查询历史。前往「对话查询」或「SQL 编辑器」页面进行查询吧！")
+        st.info("暂无查询历史。前往「对话查询」或「SQL 编辑器」页面进行查询。")
         return
 
     # 前端过滤
@@ -48,7 +48,7 @@ def page():
         history = [h for h in history if h.get("execution_status") == status_filter]
 
     if not history:
-        st.info("🔍 没有匹配的记录，试试调整筛选条件。")
+        st.info("没有匹配的记录，试试调整筛选条件。")
         return
 
     # ========== 构建 DataFrame ==========

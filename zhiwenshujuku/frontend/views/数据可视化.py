@@ -36,12 +36,16 @@ CHART_COLORS = {
     "orange": px.colors.sequential.Oranges_r,
 }
 
-FONT_FAMILY = "Noto Sans SC"
+FONT_FAMILY = "Noto Serif SC"
+FONT_BODY = "Noto Sans SC, sans-serif"
+PALETTE = ["#C17B2A", "#5A8C5A", "#6B8EAF", "#9B7BAF", "#B54A4A", "#7BAF7B", "#D4A04A", "#8B6BAF", "#4A8B8B", "#AF7B6B"]
 LAYOUT_DEFAULTS = dict(
     template="plotly_white",
-    font=dict(family=FONT_FAMILY, size=12, color="#333"),
+    font=dict(family=FONT_BODY, size=12, color="#6B5E4E"),
     margin=dict(l=20, r=20, t=50, b=20),
     height=340,
+    paper_bgcolor="rgba(0,0,0,0)",
+    plot_bgcolor="rgba(0,0,0,0)",
 )
 
 
@@ -87,8 +91,8 @@ def _render_chart(df: pd.DataFrame, chart_type: str, **kwargs):
     cfg = dict(LAYOUT_DEFAULTS)
     cfg.update(layout_kwargs)
     fig.update_layout(**cfg)
-    fig.update_xaxes(tickfont=dict(family=FONT_FAMILY, size=10), title_font=dict(family=FONT_FAMILY, size=12), gridcolor="#f0f0f0")
-    fig.update_yaxes(tickfont=dict(family=FONT_FAMILY, size=10), title_font=dict(family=FONT_FAMILY, size=12), gridcolor="#f0f0f0")
+    fig.update_xaxes(tickfont=dict(family=FONT_BODY, size=10), title_font=dict(family=FONT_BODY, size=12), gridcolor="#E4DDD4", linecolor="#E4DDD4")
+    fig.update_yaxes(tickfont=dict(family=FONT_BODY, size=10), title_font=dict(family=FONT_BODY, size=12), gridcolor="#E4DDD4", linecolor="#E4DDD4")
     return fig
 
 
@@ -147,6 +151,27 @@ def _render_movie_table():
     order_dir = "DESC" if "降序" in sort_dir else "ASC"
     columns_str = ", ".join(MOVIE_COLUMNS)
 
+    # Track filter state to reset pagination when filters change
+    current_filters = {
+        "search": search,
+        "year_from": year_from,
+        "year_to": year_to,
+        "genre": genre_filter,
+        "rating_from": rating_from,
+        "country": country_filter,
+        "rating_to": rating_to,
+        "language": language_filter,
+        "sort_col": sort_col,
+        "sort_dir": sort_dir
+    }
+
+    if "prev_movie_filters" not in st.session_state:
+        st.session_state.prev_movie_filters = current_filters
+
+    if st.session_state.prev_movie_filters != current_filters:
+        st.session_state.movie_page = 0
+        st.session_state.prev_movie_filters = current_filters
+
     if "movie_page" not in st.session_state:
         st.session_state.movie_page = 0
 
@@ -189,19 +214,19 @@ def page():
     insights = get_insights()
     if insights:
         cards = [
-            ("🎬 电影总数", str(insights.get("total_movies", 0)), "#1E3A5F"),
-            ("⭐ 平均评分", str(insights.get("avg_rating", 0)), "#E65100"),
-            ("👥 用户数", str(insights.get("total_users", 0)), "#2E7D32"),
-            ("📝 评论数", str(insights.get("total_reviews", 0)), "#6A1B9A"),
-            ("🎯 导演数", str(insights.get("total_directors", 0)), "#1565C0"),
+            ("电影总数", str(insights.get("total_movies", 0)), "#C17B2A"),
+            ("平均评分", str(insights.get("avg_rating", 0)), "#5A8C5A"),
+            ("用户数", str(insights.get("total_users", 0)), "#6B8EAF"),
+            ("评论数", str(insights.get("total_reviews", 0)), "#9B7BAF"),
+            ("导演数", str(insights.get("total_directors", 0)), "#B54A4A"),
         ]
         st.markdown(metric_cards_html(cards), unsafe_allow_html=True)
 
     # ========== 加载数据 ==========
-    with st.spinner("📊 加载分析数据..."):
+    with st.spinner("加载分析数据..."):
         cd = _load_chart_data()
     if not cd:
-        st.warning("⚠️ 无法加载分析数据，请确保后端服务和数据库已启动。")
+        st.warning("无法加载分析数据，请确保后端服务和数据库已启动。")
         return
 
     # ========== 预设分析看板 ==========
@@ -235,7 +260,7 @@ def _section_charts(cd: dict):
         if "rating_dist" in cd:
             fig = _render_chart(cd["rating_dist"], "bar", x="score_bin", y="count",
                                 title="电影评分分布", labels={"score_bin": "评分区间", "count": "电影数量"},
-                                color="count", color_continuous_scale="Blues", height=320)
+                                color="count", color_continuous_scale="Brwnyl", height=320)
             fig.update_coloraxes(showscale=False)
             st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
 
@@ -245,7 +270,7 @@ def _section_charts(cd: dict):
             fig = _render_chart(cd["yearly"], "line", x="year", y="count",
                                 title="每年电影数量趋势", labels={"year": "年份", "count": "电影数量"},
                                 markers=True, height=320)
-            fig.update_traces(line=dict(color="#FF6B35", width=2.5), marker=dict(size=5, color="#FF6B35"))
+            fig.update_traces(line=dict(color="#C17B2A", width=2), marker=dict(size=4, color="#C17B2A"))
             fig.update_layout(xaxis=dict(tickangle=-30))
             st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
 
@@ -255,8 +280,8 @@ def _section_charts(cd: dict):
             df = cd["genre"].head(12)
             fig = _render_chart(df, "treemap", path=["genre"], values="count",
                                 title="电影类型分布", color="count",
-                                color_continuous_scale="Blues", height=340)
-            fig.update_traces(textinfo="label+value", textfont=dict(family=FONT_FAMILY, size=13))
+                                color_continuous_scale="Brwnyl", height=340)
+            fig.update_traces(textinfo="label+value", textfont=dict(family=FONT_BODY, size=13))
             fig.update_coloraxes(showscale=False)
             st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
 
@@ -266,7 +291,7 @@ def _section_charts(cd: dict):
             df = cd["country"].head(10)
             fig = _render_chart(df, "bar", y="country", x="count",
                                 title="国家/地区分布 Top 10", labels={"country": "", "count": "电影数量"},
-                                color="count", color_continuous_scale="Greens",
+                                color="count", color_continuous_scale="Tealgrn",
                                 text="count", orientation="h", height=340)
             fig.update_traces(textposition="outside", textfont=dict(size=11))
             fig.update_layout(yaxis=dict(autorange="reversed"), showlegend=False)
@@ -278,7 +303,7 @@ def _section_charts(cd: dict):
         if "top10" in cd:
             fig = _render_chart(cd["top10"], "bar", y="title", x="rating",
                                 title="评分最高 Top 10", labels={"title": "", "rating": "评分"},
-                                color="rating", color_continuous_scale="Reds",
+                                color="rating", color_continuous_scale="Brwnyl",
                                 orientation="h", text="rating", height=360)
             fig.update_traces(textposition="outside", texttemplate="%{text:.1f}", textfont=dict(size=11))
             fig.update_layout(yaxis=dict(autorange="reversed"), showlegend=False)
@@ -290,7 +315,7 @@ def _section_charts(cd: dict):
         if "duration" in cd:
             fig = _render_chart(cd["duration"], "bar", y="title", x="duration",
                                 title="最长电影 Top 15", labels={"title": "", "duration": "时长(分钟)"},
-                                color="duration", color_continuous_scale="Purples",
+                                color="duration", color_continuous_scale="Purp",
                                 orientation="h", text="duration", height=360)
             fig.update_traces(textposition="outside", textfont=dict(size=11))
             fig.update_layout(yaxis=dict(autorange="reversed"), showlegend=False)
@@ -313,10 +338,11 @@ def _advanced_charts(cd: dict):
             fig = _render_chart(df, "scatter", x="duration", y="rating", color="genre",
                                 title="评分与时长关系", labels={"duration": "时长(分钟)", "rating": "评分", "genre": "类型"},
                                 hover_data=["title", "year"], height=380,
-                                opacity=0.7, size_max=12)
-            fig.update_traces(marker=dict(size=8, line=dict(width=0.5, color="white")))
-            fig.update_layout(legend=dict(orientation="h", y=-0.25, font=dict(size=9)),
-                              xaxis=dict(gridcolor="#f5f5f5"), yaxis=dict(gridcolor="#f5f5f5"))
+                                opacity=0.65, size_max=12,
+                                color_discrete_sequence=PALETTE)
+            fig.update_traces(marker=dict(size=7, line=dict(width=0.5, color="white")))
+            fig.update_layout(legend=dict(orientation="h", y=-0.25, font=dict(size=9, family=FONT_BODY)),
+                              xaxis=dict(gridcolor="#E4DDD4"), yaxis=dict(gridcolor="#E4DDD4"))
             st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
         else:
             st.info("暂无散点数据")
@@ -327,19 +353,20 @@ def _advanced_charts(cd: dict):
             df = cd["decade_stats"]
             fig = go.Figure()
             fig.add_trace(go.Bar(x=df["decade"], y=df["count"], name="电影数量",
-                                 marker=dict(color="#4A90D9", opacity=0.7), yaxis="y"))
+                                 marker=dict(color="#6B8EAF", opacity=0.6), yaxis="y"))
             fig.add_trace(go.Scatter(x=df["decade"], y=df["avg_rating"], name="平均评分",
-                                     mode="lines+markers", line=dict(color="#E65100", width=3),
-                                     marker=dict(size=10, color="#E65100"), yaxis="y2"))
+                                     mode="lines+markers", line=dict(color="#C17B2A", width=2.5),
+                                     marker=dict(size=8, color="#C17B2A"), yaxis="y2"))
             fig.update_layout(
-                title=dict(text="年代发展趋势", font=dict(family=FONT_FAMILY, size=15, color="#1E3A5F"), x=0.5),
-                template="plotly_white", font=dict(family=FONT_FAMILY, size=12, color="#333"),
+                title=dict(text="年代发展趋势", font=dict(family=FONT_FAMILY, size=15, color="#2C2417"), x=0.5),
+                template="plotly_white", font=dict(family=FONT_BODY, size=12, color="#6B5E4E"),
                 height=380, margin=dict(l=20, r=20, t=50, b=20),
-                legend=dict(orientation="h", y=1.08, x=0.5, xanchor="center", font=dict(size=11)),
-                xaxis=dict(title="年代", gridcolor="#f5f5f5", tickfont=dict(family=FONT_FAMILY)),
-                yaxis=dict(title="电影数量", gridcolor="#f5f5f5", tickfont=dict(family=FONT_FAMILY)),
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                legend=dict(orientation="h", y=1.08, x=0.5, xanchor="center", font=dict(size=11, family=FONT_BODY)),
+                xaxis=dict(title="年代", gridcolor="#E4DDD4", linecolor="#E4DDD4", tickfont=dict(family=FONT_BODY)),
+                yaxis=dict(title="电影数量", gridcolor="#E4DDD4", linecolor="#E4DDD4", tickfont=dict(family=FONT_BODY)),
                 yaxis2=dict(title="平均评分", overlaying="y", side="right", range=[0, 10],
-                            gridcolor="rgba(0,0,0,0)", tickfont=dict(family=FONT_FAMILY)),
+                            gridcolor="rgba(0,0,0,0)", tickfont=dict(family=FONT_BODY)),
             )
             st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
         else:
@@ -353,8 +380,8 @@ def _advanced_charts(cd: dict):
             df = df[df["genre"].isin(top_genres)]
             fig = _render_chart(df, "box", x="genre", y="rating", color="genre",
                                 title="各类型评分分布", labels={"genre": "类型", "rating": "评分"},
-                                height=380, color_discrete_sequence=px.colors.qualitative.Bold)
-            fig.update_layout(showlegend=False, xaxis=dict(tickangle=-25, tickfont=dict(size=10)))
+                                height=380, color_discrete_sequence=PALETTE)
+            fig.update_layout(showlegend=False, xaxis=dict(tickangle=-25, tickfont=dict(size=10, family=FONT_BODY)))
             st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
         else:
             st.info("暂无类型数据")
@@ -365,9 +392,9 @@ def _advanced_charts(cd: dict):
             df = cd["director_top"]
             fig = _render_chart(df, "bar", y="director", x="avg_rating",
                                 title="高产导演平均评分 Top 15", labels={"director": "", "avg_rating": "平均评分"},
-                                color="avg_rating", color_continuous_scale="Oranges",
+                                color="avg_rating", color_continuous_scale="Brwnyl",
                                 orientation="h", text="avg_rating", height=440)
-            fig.update_traces(textposition="outside", texttemplate="%{text:.1f}", textfont=dict(size=10),
+            fig.update_traces(textposition="outside", texttemplate="%{text:.1f}", textfont=dict(size=10, family=FONT_BODY),
                               hovertemplate="<b>%{y}</b><br>平均评分: %{x:.2f}<br>作品数: %{customdata[0]}部<extra></extra>",
                               customdata=df[["movie_count"]])
             fig.update_layout(yaxis=dict(autorange="reversed"), showlegend=False)
@@ -380,19 +407,40 @@ def _advanced_charts(cd: dict):
 # ===================== 自定义查询 =====================
 
 def _custom_query_section():
+    if "custom_query_df" not in st.session_state:
+        st.session_state.custom_query_df = None
+    if "custom_query_error" not in st.session_state:
+        st.session_state.custom_query_error = None
+    if "custom_query_sql" not in st.session_state:
+        st.session_state.custom_query_sql = "SELECT country, COUNT(*) as count, ROUND(AVG(rating),2) as avg_rating FROM movies GROUP BY country ORDER BY count DESC LIMIT 10"
+
     custom_sql = st.text_area(
         "输入 SQL 查询，结果将自动可视化",
-        value="SELECT country, COUNT(*) as count, ROUND(AVG(rating),2) as avg_rating FROM movies GROUP BY country ORDER BY count DESC LIMIT 10",
+        value=st.session_state.custom_query_sql,
         height=80, label_visibility="collapsed",
     )
 
     if st.button("▶️ 查询并可视化", type="primary"):
-        with st.spinner("🔄 查询中..."):
+        st.session_state.custom_query_sql = custom_sql
+        with st.spinner("查询中..."):
             result = execute_sql(custom_sql)
 
         if result and result.get("success") and result.get("data"):
-            df = pd.DataFrame(result["data"])
-            st.success(f"✅ 查询成功，返回 {len(df)} 行")
+            st.session_state.custom_query_df = pd.DataFrame(result["data"])
+            st.session_state.custom_query_error = None
+        else:
+            st.session_state.custom_query_df = None
+            st.session_state.custom_query_error = result.get("error", "无返回数据") if result else "连接失败"
+        st.rerun()
+
+    # Renders the results outside the button block if they exist
+    if st.session_state.custom_query_error:
+        st.error(f"❌ {st.session_state.custom_query_error}")
+
+    df = st.session_state.custom_query_df
+    if df is not None:
+        if not df.empty:
+            st.success(f"查询成功，返回 {len(df)} 行")
 
             numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
             text_cols = df.select_dtypes(exclude=["number"]).columns.tolist()
@@ -406,26 +454,42 @@ def _custom_query_section():
                     y_col = st.selectbox("Y 轴", numeric_cols, key="custom_y")
                     colors = st.selectbox("配色方案", ["Blues", "Reds", "Greens", "Purples", "Oranges", "Viridis", "Plasma"], key="custom_colors")
 
-                chart_map = {
-                    "柱状图": lambda: px.bar(df, x=x_col, y=y_col, color=y_col, color_continuous_scale=colors),
-                    "折线图": lambda: px.line(df, x=x_col, y=y_col, markers=True, color_discrete_sequence=["#FF6B35"]),
-                    "饼图": lambda: px.pie(df, names=x_col, values=y_col, color_discrete_sequence=px.colors.qualitative.Bold),
-                    "散点图": lambda: px.scatter(df, x=x_col, y=y_col, size=y_col, color=y_col, color_continuous_scale=colors),
-                    "面积图": lambda: px.area(df, x=x_col, y=y_col, color_discrete_sequence=["#2E7D32"]),
+                # Map colors scheme from selection
+                color_scale_map = {
+                    "Blues": "Blues",
+                    "Reds": "Reds",
+                    "Greens": "Greens",
+                    "Purples": "Purples",
+                    "Oranges": "Oranges",
+                    "Viridis": "Viridis",
+                    "Plasma": "Plasma"
                 }
-                fig = chart_map.get(chart_type, chart_map["柱状图"])()
-                fig.update_layout(
-                    template="plotly_white", font=dict(family=FONT_FAMILY, size=12, color="#333"),
-                    margin=dict(l=20, r=20, t=20, b=20), height=420,
-                )
-                fig.update_xaxes(tickfont=dict(family=FONT_FAMILY), title_font=dict(family=FONT_FAMILY))
-                fig.update_yaxes(tickfont=dict(family=FONT_FAMILY), title_font=dict(family=FONT_FAMILY))
-                st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+                scale = color_scale_map.get(colors, "Blues")
+
+                chart_map = {
+                    "柱状图": lambda: px.bar(df, x=x_col, y=y_col, color=y_col, color_continuous_scale=scale),
+                    "折线图": lambda: px.line(df, x=x_col, y=y_col, markers=True, color_discrete_sequence=[PALETTE[0]]),
+                    "饼图": lambda: px.pie(df, names=x_col, values=y_col, color_discrete_sequence=PALETTE),
+                    "散点图": lambda: px.scatter(df, x=x_col, y=y_col, size=y_col, color=y_col, color_continuous_scale=scale),
+                    "面积图": lambda: px.area(df, x=x_col, y=y_col, color_discrete_sequence=[PALETTE[2]]),
+                }
+                
+                try:
+                    fig = chart_map.get(chart_type, chart_map["柱状图"])()
+                    fig.update_layout(
+                        template="plotly_white", font=dict(family=FONT_BODY, size=12, color="#6B5E4E"),
+                        margin=dict(l=20, r=20, t=20, b=20), height=420,
+                        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                    )
+                    fig.update_xaxes(tickfont=dict(family=FONT_BODY), title_font=dict(family=FONT_BODY), gridcolor="#E4DDD4")
+                    fig.update_yaxes(tickfont=dict(family=FONT_BODY), title_font=dict(family=FONT_BODY), gridcolor="#E4DDD4")
+                    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+                except Exception as chart_err:
+                    st.error(f"绘图出错: {chart_err}")
 
                 with st.expander("📋 查看数据表格"):
                     st.dataframe(df, width="stretch", hide_index=True)
             else:
                 st.dataframe(df, width="stretch", hide_index=True)
         else:
-            error = result.get("error", "无返回数据") if result else "连接失败"
-            st.error(f"❌ {error}")
+            st.info("查询执行成功，但返回数据为空。")

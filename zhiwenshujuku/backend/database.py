@@ -4,6 +4,7 @@
 
 import sqlite3
 import time
+import re
 from pathlib import Path
 import pandas as pd
 from loguru import logger
@@ -185,3 +186,102 @@ class DatabaseManager:
         )
         conn.commit()
         conn.close()
+
+    def explain_query(self, sql: str) -> dict:
+        """运行 EXPLAIN QUERY PLAN 并分析结果"""
+        result = {
+            "success": False,
+            "raw_plan": [],
+            "has_table_scan": False,
+            "scan_tables": [],
+            "error": None
+        }
+        try:
+            conn = self.get_connection()
+            cursor = conn.execute(f"EXPLAIN QUERY PLAN {sql}")
+            rows = cursor.fetchall()
+            
+            plan = []
+            for row in rows:
+                row_dict = dict(row)
+                plan.append(row_dict)
+                detail = row_dict.get("detail", "")
+                if "SCAN" in detail:
+                    result["has_table_scan"] = True
+                    match = re.search(r"SCAN\s+(?:TABLE\s+)?([a-zA-Z0-9_]+)", detail)
+                    if match:
+                        table = match.group(1)
+                        if table not in result["scan_tables"]:
+                            result["scan_tables"].append(table)
+            
+            result["raw_plan"] = plan
+            result["success"] = True
+            conn.close()
+        except Exception as e:
+            result["error"] = str(e)
+            logger.error(f"EXPLAIN SQL 失败: {e}")
+        return result
+
+    def get_indexes(self) -> list[dict]:
+        """获取当前数据库中的所有索引（包含自动和自定义创建的）"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT name, tbl_name, sql 
+            FROM sqlite_master 
+            WHERE type = 'index' AND tbl_name NOT LIKE 'sqlite_%'
+        """)
+        rows = cursor.fetchall()
+        
+        indexes = []
+        for row in rows:
+            row_dict = dict(row)
+            is_custom = bool(row_dict.get("sql"))
+            indexes.append({
+                "index_name": row_dict["name"],
+                "table_name": row_dict["tbl_name"],
+                "sql": row_dict["sql"] or "自动创建 (主键/唯一约束)",
+                "is_custom": is_custom
+            })
+        conn.close()
+        return indexes
+
+    def create_index(self, table: str, column: str, index_name: str) -> dict:
+        """在指定的表和列上创建索引"""
+        result = {"success": False, "error": None}
+        if not (re.match(r"^\w+$", table) and re.match(r"^\w+$", column) and re.match(r"^\w+$", index_name)):
+            result["error"] = "非法的表名、列名或索引名格式"
+            return result
+        
+        sql = f"CREATE INDEX IF NOT EXISTS {index_name} ON {table}({column})"
+        try:
+            conn = self.get_connection()
+            conn.execute(sql)
+            conn.commit()
+            conn.close()
+            result["success"] = True
+            logger.info(f"成功创建索引: {index_name} ON {table}({column})")
+        except Exception as e:
+            result["error"] = str(e)
+            logger.error(f"创建索引失败: {e}")
+        return result
+
+    def drop_index(self, index_name: str) -> dict:
+        """删除指定的索引"""
+        result = {"success": False, "error": None}
+        if not re.match(r"^\w+$", index_name):
+            result["error"] = "非法的索引名格式"
+            return result
+            
+        sql = f"DROP INDEX IF EXISTS {index_name}"
+        try:
+            conn = self.get_connection()
+            conn.execute(sql)
+            conn.commit()
+            conn.close()
+            result["success"] = True
+            logger.info(f"成功删除索引: {index_name}")
+        except Exception as e:
+            result["error"] = str(e)
+            logger.error(f"删除索引失败: {e}")
+        return result

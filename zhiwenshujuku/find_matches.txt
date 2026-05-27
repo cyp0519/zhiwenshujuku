@@ -1,0 +1,47 @@
+.\frontend.log:21: C:\Users\Administrator\Desktop\课程设计(3)\智问数据库\frontend\app.py:6 in <module>
+.\frontend.log:45: C:\Users\Administrator\Desktop\课程设计(3)\智问数据库\frontend\pages\SQL编辑器.py:7
+.\frontend.log:81: C:\Users\Administrator\Desktop\课程设计(3)\智问数据库\frontend\pages\数据可视化.py: 9  gation\page.py: 490 in run
+.\frontend.log:85: C:\Users\Administrator\Desktop\课程设计(3)\智问数据库\frontend\pages\对话查询.py: 7
+.\frontend.log:121: C:\Users\Administrator\AppData\Roaming\Python\Python312\site-packages\streamlit\runt   C:\Users\Administrator\Desktop\课程设计(3)\智问数据库\frontend\pages\查询历史.py:
+.\frontend.log:140: 8                                                                                    C:\Users\Administrator\Desktop\课程设计(3)\智问数据库\frontend\pages\数据可视化.py:9
+.\README.md:1: # 智问数据库
+.\README.md:81: 智问数据库/
+.\start.sh:4: echo "  智问数据库 — 一键启动"
+.\优化对比报告.md:1: # 智问数据库 — 优化对比报告
+.\错误报告与修正分析.md:1: # 智问数据库 — 错误报告与修正分析
+.\错误报告与修正分析.md:37: **原因：** `requirements.txt` 首行包含中文注释 `# 智问数据库 — 依赖清单`，pip 在 Windows GBK 环境下无法解码 UTF-8 中文字符。
+.\错误报告与修正分析.md:256: > 项目：zhiwenshujuku（智问数据库 — 自然语言数据库查询与分析平台）
+.\backend\api.py:2: 智问数据库 — FastAPI 后端服务
+.\backend\api.py:117: logger.info("🚀 智问数据库 后端启动中...")
+.\backend\api.py:136: logger.info("✅ 智问数据库 后端就绪")
+.\backend\api.py:138: logger.info("🛑 智问数据库 后端关闭")
+.\backend\api.py:142: title="智问数据库 API",
+.\backend\api.py:168: "name": "智问数据库",
+.\backend\config.py:2: 智问数据库 — 配置模块
+.\backend\database.py:2: 智问数据库 — SQLite 数据库适配器
+.\backend\graph.py:2: 智问数据库 — LangGraph Agent 工作流定义
+.\backend\nodes.py:2: 智问数据库 — LangGraph Agent 节点函数 (全中文)
+.\backend\nodes.py:293: system_prompt = """你是一个智能电影数据库助手的 AI 助手，能用中文回答用户关于电影数据库的问题。
+.\backend\state.py:2: 智问数据库 — LangGraph Agent State
+.\backend\vector_store.py:2: 智问数据库 — ChromaDB 向量存储（RAG 检索增强）
+.\backend\__init__.py:1: """智问数据库 后端包"""
+.\configs\prompts.yml:2: # 智问数据库 — 提示词配置 (全中文)
+.\configs\prompts.yml:43: 目标数据库（电影数据库）的 Schema：
+.\data\create_dataset.py:2: 智问数据库 — 电影数据集创建脚本
+.\docs\错误报告与修正分析.md:1: # 智问数据库 — 错误报告与修正分析
+.\docs\错误报告与修正分析.md:35: **原因：** `requirements.txt` 首行包含中文注释 `# 智问数据库 — 依赖清单`，pip 在 Windows GBK 环境下无法解码 UTF-8 中文字符。
+.\docs\错误报告与修正分析.md:239: > 项目：zhiwenshujuku（智问数据库 — 自然语言数据库查询与分析平台）
+.\docs\superpowers\plans\2026-05-20-5-fixes.md:370: 智问数据库 — 查询历史页面
+.\frontend\app.py:2: 智问数据库 — Streamlit 主应用
+.\frontend\styles.py:2: 智问数据库 — 共享样式定义
+.\frontend\utils.py:2: 智问数据库 — 前端 API 工具
+.\frontend\__init__.py:2: 智问数据库 — 前端模块
+.\frontend\views\SQL编辑器.py:2: 智问数据库 — SQL 编辑器页面
+.\frontend\views\__init__.py:2: 智问数据库 — 页面模块
+.\frontend\views\对话查询.py:2: 智问数据库 — 对话查询页面 (主界面)
+.\frontend\views\数据可视化.py:2: 智问数据库 — 数据可视化页面
+.\frontend\views\数据可视化.py:209: page_header("📊", "数据可视化", "电影数据库的可视化分析看板", gradient="linear-gradient(135deg, #2E7D32, #4CAF50)"),
+.\frontend\views\智能问答.py:2: 智问数据库 — 智能问答检索页面 (结构化检索版)
+.\frontend\views\查询历史.py:2: 智问数据库 — 查询历史页面
+.\frontend\views\系统概览.py:2: 智问数据库 — 系统概览页面（查询统计 + ER 图）
+.\knowledge\sql_examples.yml:2: # 智问数据库 — SQL 样例库 (扩充版)

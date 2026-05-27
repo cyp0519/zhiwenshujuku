@@ -30,7 +30,6 @@ def create_graph(db: DatabaseManager, vs: VectorStore):
     workflow.add_node("sql_generator", sql_gen_node)
     workflow.add_node("sql_safety_validator", nodes.sql_safety_validator)
     workflow.add_node("sql_syntax_validator", sql_syntax_node)
-    workflow.add_node("human_feedback", nodes.human_feedback)
     workflow.add_node("sql_executor", sql_exec_node)
     workflow.add_node("sql_result_analyzer", nodes.sql_result_analyzer)
     
@@ -58,13 +57,7 @@ def create_graph(db: DatabaseManager, vs: VectorStore):
     workflow.add_conditional_edges(
         "sql_syntax_validator",
         nodes.check_sql_syntax,
-        {"valid": "human_feedback", "invalid": END},
-    )
-    
-    workflow.add_conditional_edges(
-        "human_feedback",
-        nodes.check_human_feedback,
-        {"approved": "sql_executor", "rejected": END},
+        {"valid": "sql_executor", "invalid": END},
     )
     
     workflow.add_conditional_edges(
@@ -76,7 +69,7 @@ def create_graph(db: DatabaseManager, vs: VectorStore):
     workflow.add_edge("sql_result_analyzer", END)
     workflow.add_edge("chat_agent", END)
     
-    logger.info("✅ LangGraph 工作流构建完成 (8个节点)")
+    logger.info("✅ LangGraph 工作流构建完成 (7个节点)")
     
     # 编译工作流（必须用 checkpointer 支持 interrupt 和 Command(resume=...)）
     compiled = workflow.compile(checkpointer=memory)

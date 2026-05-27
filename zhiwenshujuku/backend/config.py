@@ -4,6 +4,12 @@
 
 import os
 import sys
+import warnings
+
+# 抑制 langchain_core Reviver 的 pending deprecation 警告
+# 来源：langgraph.checkpoint.serde.jsonplus 模块级实例化 Reviver() 未传 allowed_objects
+# 这是第三方库内部问题，待 langchain-core >= 0.4 修复后可移除
+warnings.filterwarnings("ignore", message=".*allowed_objects.*", category=PendingDeprecationWarning)
 from pathlib import Path
 from dotenv import load_dotenv
 from loguru import logger
